@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PracticeCoreMVC.Contexts;
 using PracticeCoreMVC.Models;
+using System.Diagnostics;
 using System.Security.Claims;
 
 namespace PracticeCoreMVC.Controllers
@@ -25,9 +26,13 @@ namespace PracticeCoreMVC.Controllers
             var userExists = await _repocontext.Register.Select(x => x).Where(x => (x.UserName == loginModel.UserName || x.Email == loginModel.UserName) && x.Password == loginModel.Password).AnyAsync();
             if(userExists)
             {
+                var userDetails = await _repocontext.Register.Select(x => x).Where(x => (x.UserName == loginModel.UserName || x.Email == loginModel.UserName) && x.Password == loginModel.Password).FirstOrDefaultAsync();
+                var Roledetail = await _repocontext.UserRoleMapping.Select(x => x).Where(x => x.UserId == userDetails.Id).FirstOrDefaultAsync();
+                var role = await _repocontext.Roles.Select(x => x).Where(x => x.Id == Roledetail.RoleId).FirstOrDefaultAsync();
                 var Identity = new ClaimsIdentity(new[]
                 {
-                    new Claim(ClaimTypes.NameIdentifier, loginModel.UserName)
+                    new Claim(ClaimTypes.NameIdentifier, loginModel.UserName),
+                    new Claim(ClaimTypes.Role, role.Role)
                 },CookieAuthenticationDefaults.AuthenticationScheme);
                 var Principal = new ClaimsPrincipal(Identity);
                 await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, Principal);
@@ -55,7 +60,16 @@ namespace PracticeCoreMVC.Controllers
                 return View();
             }
             await _repocontext.AddAsync(registerModel);
-            _repocontext.SaveChanges();
+            await _repocontext.SaveChangesAsync();
+            var user = await _repocontext.Register.Select(x => x).Where(x => x.UserName == registerModel.UserName && x.Email == registerModel.Email).FirstOrDefaultAsync();
+            var role = await _repocontext.Roles.Select(x => x).Where(x => x.Role == "User").FirstOrDefaultAsync();
+            await _repocontext.UserRoleMapping.AddAsync(new UserRoleMappingModel()
+            {
+                Id = new Guid(),
+                UserId = user.Id,
+                RoleId = role.Id
+            });
+            await _repocontext.SaveChangesAsync();
             return RedirectToAction("Login","Account");
         }
         public IActionResult ForgotPassword()
@@ -73,6 +87,10 @@ namespace PracticeCoreMVC.Controllers
             }
             // Not Implemented
             return RedirectToAction("Login","Account");
+        }
+        public IActionResult Error()
+        {
+            return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
         }
     }
 }

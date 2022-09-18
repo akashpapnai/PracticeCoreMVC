@@ -2,13 +2,12 @@
 
 namespace PracticeCoreMVC.Models
 {
-    public class LoginModel
+    public class RoleModel
     {
         [Key]
         public Guid Id { get; set; }
         [Required]
-        public string UserName { get; set; }
-        [Required]
-        public string Password { get; set; }
+        [StringLength(100)]
+        public string Role { get; set; }
     }
 }

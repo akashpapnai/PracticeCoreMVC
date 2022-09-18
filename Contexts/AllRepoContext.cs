@@ -10,5 +10,7 @@ namespace PracticeCoreMVC.Contexts
         {
         }
         public virtual DbSet<RegisterModel> Register { get; set; }
+        public virtual DbSet<RoleModel> Roles { get; set; }
+        public virtual DbSet<UserRoleMappingModel> UserRoleMapping { get; set; }
     }
 }

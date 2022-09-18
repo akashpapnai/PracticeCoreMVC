@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
 using PracticeCoreMVC.Contexts;
+using PracticeCoreMVC.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 

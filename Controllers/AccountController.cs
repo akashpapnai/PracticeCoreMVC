@@ -1,14 +1,17 @@
 ﻿using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PracticeCoreMVC.Contexts;
+using PracticeCoreMVC.Data;
 using PracticeCoreMVC.Models;
 using System.Diagnostics;
 using System.Security.Claims;
 
 namespace PracticeCoreMVC.Controllers
 {
+    [Authorize]
     public class AccountController : Controller
     {
         private readonly AllRepoContext _repocontext;
@@ -16,10 +19,12 @@ namespace PracticeCoreMVC.Controllers
         {
             _repocontext = repocontext;
         }
+        [AllowAnonymous]
         public IActionResult Login()
         {
             return View();
         }
+        [AllowAnonymous]
         [HttpPost]
         public async Task<IActionResult> Login(LoginModel loginModel)
         {
@@ -46,10 +51,12 @@ namespace PracticeCoreMVC.Controllers
             await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
             return RedirectToAction("Index", "Home");
         }
+        [AllowAnonymous]
         public IActionResult Register()
         {
             return View();
         }
+        [AllowAnonymous]
         [HttpPost]
         public async Task<IActionResult> Register(RegisterModel registerModel)
         {
@@ -85,13 +92,10 @@ namespace PracticeCoreMVC.Controllers
                 TempData["UserNotExistsError"] = $"User with the email '{email}' does not Exists";
                 return View();
             }
-            // Not Implemented
+            // TODO: Try to Implement Forgot Password corrected via Email
             return RedirectToAction("Login","Account");
         }
-        public IActionResult Error()
-        {
-            return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
-        }
+        [Authorize(Roles = "Admin, Manager")]
         public async Task<IActionResult> ChangeRole()
         {
             var roleslist = await _repocontext.Roles.Select(x => x).ToListAsync();
@@ -102,6 +106,7 @@ namespace PracticeCoreMVC.Controllers
                 registerModelList = userslist
             });
         }
+        [Authorize(Roles = "Admin, Manager")]
         [HttpPost]
         public async Task<IActionResult> ChangeRole(string username, string role)
         {
@@ -109,6 +114,35 @@ namespace PracticeCoreMVC.Controllers
             var userdetails = await _repocontext.Register.SingleAsync(x => x.UserName == username);
             var map = await _repocontext.UserRoleMapping.SingleAsync(x => x.UserId == userdetails.Id);
             map.RoleId = roledata.Id;
+            await _repocontext.SaveChangesAsync();
+            return RedirectToAction("Index","Home");
+        }
+        [Authorize(Roles = "Admin")]
+        public IActionResult AddRole()
+        {
+            return View();
+        }
+        [Authorize(Roles = "Admin")]
+        [HttpPost]
+        public async Task<IActionResult> AddRole(string Role)
+        {
+            Validation validation = new Validation();
+            if(string.IsNullOrWhiteSpace(Role) || validation.containsNumeralOrSpecialCharacters(Role))
+            {
+                TempData["InvalidRole"] = $"'{Role}' is Invalid Name";
+                return View();
+            }
+            var roledata = await _repocontext.Roles.SingleOrDefaultAsync(x => x.Role.ToLower() == Role.ToLower());
+            if(roledata != null)
+            {
+                TempData["RoleExistsError"] = $"{Role} Role Already Exists";
+                return View();
+            }
+            await _repocontext.Roles.AddAsync(new RoleModel()
+            {
+                Id = new Guid(),
+                Role = Role
+            });
             await _repocontext.SaveChangesAsync();
             return RedirectToAction("Index","Home");
         }

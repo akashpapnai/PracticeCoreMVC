@@ -1,0 +1,28 @@
+﻿@model PracticeCoreMVC.Models.AllModels
+
+<h1>Change User Role </h1>
+<hr />
+<div class="row">
+    <form asp-action="ChangeRole">
+        <div class="col-md-4">
+            <div class="form-group">
+                <br />
+                <select class="btn btn-secondary dropdown-toggle" name="username" id="username">
+                    @foreach (var role in Model.registerModelList)
+                    {
+                        <option value="@role.UserName">@role.UserName</option>
+                    }
+                </select>
+                <select class="btn btn-secondary dropdown-toggle" name="role" id="role">
+                    @foreach(var role in Model.roleModelList) {
+                        <option value="@role.Role">@role.Role</option>
+                    }
+                </select>
+                <div class="form-group mt-2">
+                    <input type="submit" value="Change Role" class="btn btn-primary" />
+                </div>
+                <span class="text-danger">@TempData["UserNotExistsError"]</span>
+            </div>
+        </div>
+    </form>
+</div>

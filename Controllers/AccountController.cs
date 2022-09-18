@@ -92,5 +92,25 @@ namespace PracticeCoreMVC.Controllers
         {
             return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
         }
+        public async Task<IActionResult> ChangeRole()
+        {
+            var roleslist = await _repocontext.Roles.Select(x => x).ToListAsync();
+            var userslist = await _repocontext.Register.Select(x => x).ToListAsync();
+            return View(new AllModels()
+            {
+                roleModelList = roleslist,
+                registerModelList = userslist
+            });
+        }
+        [HttpPost]
+        public async Task<IActionResult> ChangeRole(string username, string role)
+        {
+            var roledata = await _repocontext.Roles.SingleAsync(x => x.Role == role);
+            var userdetails = await _repocontext.Register.SingleAsync(x => x.UserName == username);
+            var map = await _repocontext.UserRoleMapping.SingleAsync(x => x.UserId == userdetails.Id);
+            map.RoleId = roledata.Id;
+            await _repocontext.SaveChangesAsync();
+            return RedirectToAction("Index","Home");
+        }
     }
 }

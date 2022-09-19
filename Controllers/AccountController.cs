@@ -20,6 +20,7 @@ namespace PracticeCoreMVC.Controllers
         {
             _repocontext = repocontext;
         }
+        #region LoginAndRegister
         [AllowAnonymous]
         public IActionResult Login()
         {
@@ -97,6 +98,8 @@ namespace PracticeCoreMVC.Controllers
             // TODO: Try to Implement Forgot Password corrected via Email
             return RedirectToAction("Login","Account");
         }
+        #endregion
+        
         [Authorize(Roles = "Admin, Manager")]
         public async Task<IActionResult> ChangeRole()
         {

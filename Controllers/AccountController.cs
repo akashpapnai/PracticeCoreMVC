@@ -8,6 +8,7 @@ using PracticeCoreMVC.Data;
 using PracticeCoreMVC.Models;
 using System.Diagnostics;
 using System.Security.Claims;
+using System.Security.Principal;
 
 namespace PracticeCoreMVC.Controllers
 {
@@ -34,9 +35,10 @@ namespace PracticeCoreMVC.Controllers
                 var userDetails = await _repocontext.Register.Select(x => x).Where(x => (x.UserName == loginModel.UserName || x.Email == loginModel.UserName) && x.Password == loginModel.Password).FirstOrDefaultAsync();
                 var Roledetail = await _repocontext.UserRoleMapping.Select(x => x).Where(x => x.UserId == userDetails.Id).FirstOrDefaultAsync();
                 var role = await _repocontext.Roles.Select(x => x).Where(x => x.Id == Roledetail.RoleId).FirstOrDefaultAsync();
-                var Identity = new ClaimsIdentity(new[]
+                var Identity = new ClaimsIdentity(new List<Claim>
                 {
-                    new Claim(ClaimTypes.NameIdentifier, loginModel.UserName),
+                    new Claim(ClaimTypes.Name, loginModel.UserName),
+                    new Claim("FullName", loginModel.UserName),
                     new Claim(ClaimTypes.Role, role.Role)
                 },CookieAuthenticationDefaults.AuthenticationScheme);
                 var Principal = new ClaimsPrincipal(Identity);
@@ -44,7 +46,7 @@ namespace PracticeCoreMVC.Controllers
                 return RedirectToAction("Index","Home");
             }
             TempData["LoginError"] = "UserName or Password is Incorrect";
-            return RedirectToAction("Login","Account");
+            return View();
         }
         public async Task<IActionResult> Logout()
         {
@@ -110,11 +112,17 @@ namespace PracticeCoreMVC.Controllers
         [HttpPost]
         public async Task<IActionResult> ChangeRole(string username, string role)
         {
+            var identity = (ClaimsIdentity)User.Identity;
+            List<Claim> claims = (List<Claim>)identity.Claims;
             var roledata = await _repocontext.Roles.SingleAsync(x => x.Role == role);
             var userdetails = await _repocontext.Register.SingleAsync(x => x.UserName == username);
             var map = await _repocontext.UserRoleMapping.SingleAsync(x => x.UserId == userdetails.Id);
             map.RoleId = roledata.Id;
             await _repocontext.SaveChangesAsync();
+            if (claims[1].Value == username)
+            {
+                await Logout();
+            }
             return RedirectToAction("Index","Home");
         }
         [Authorize(Roles = "Admin")]

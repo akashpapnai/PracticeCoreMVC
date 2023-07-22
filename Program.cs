@@ -1,8 +1,6 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
 using PracticeCoreMVC.Contexts;
-using PracticeCoreMVC.Data;
-using System.Security.Claims;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -22,6 +20,11 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
     options.ExpireTimeSpan = TimeSpan.FromDays(365);
     options.SlidingExpiration = false;
 });
+
+builder.Services.AddHttpsRedirection(options=>{
+    options.HttpsPort = 443;
+});
+
 builder.Services.AddHttpClient();
 
 var app = builder.Build();
@@ -36,6 +39,7 @@ if (!app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
+app.UseHttpsRedirection();
 
 app.UseRouting();
 

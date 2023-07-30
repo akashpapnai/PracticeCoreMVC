@@ -23,6 +23,11 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
     options.ExpireTimeSpan = TimeSpan.FromDays(365);
     options.SlidingExpiration = false;
 });
+
+builder.Services.AddHttpsRedirection(options=>{
+    options.HttpsPort = 443;
+});
+
 builder.Services.AddHttpClient();
 builder.Services.AddSingleton<CommonClass>();
 builder.Services.AddSingleton<PasswordSecurity>();
@@ -39,6 +44,7 @@ if (!app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
+app.UseHttpsRedirection();
 
 app.UseRouting();
 

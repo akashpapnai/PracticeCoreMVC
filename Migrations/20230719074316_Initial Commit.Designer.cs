@@ -12,8 +12,8 @@ using PracticeCoreMVC.Contexts;
 namespace PracticeCoreMVC.Migrations
 {
     [DbContext(typeof(AllRepoContext))]
-    [Migration("20220918071101_InitialMigration")]
-    partial class InitialMigration
+    [Migration("20230719074316_Initial Commit")]
+    partial class InitialCommit
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {

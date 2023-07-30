@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
 using PracticeCoreMVC.Contexts;
 using PracticeCoreMVC.Data;
+using PracticeCoreMVC.Services;
 using System.Security.Claims;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -23,6 +24,8 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
     options.SlidingExpiration = false;
 });
 builder.Services.AddHttpClient();
+builder.Services.AddSingleton<CommonClass>();
+builder.Services.AddSingleton<PasswordSecurity>();
 
 var app = builder.Build();
 

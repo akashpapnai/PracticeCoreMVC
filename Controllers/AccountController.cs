@@ -6,9 +6,11 @@ using Microsoft.EntityFrameworkCore;
 using PracticeCoreMVC.Contexts;
 using PracticeCoreMVC.Data;
 using PracticeCoreMVC.Models;
+using PracticeCoreMVC.Services;
 using System.Diagnostics;
 using System.Security.Claims;
 using System.Security.Principal;
+using System.Text;
 
 namespace PracticeCoreMVC.Controllers
 {
@@ -16,9 +18,11 @@ namespace PracticeCoreMVC.Controllers
     public class AccountController : Controller
     {
         private readonly AllRepoContext _repocontext;
-        public AccountController(AllRepoContext repocontext)
+        private readonly PasswordSecurity _security;
+        public AccountController(AllRepoContext repocontext, PasswordSecurity security)
         {
-            _repocontext = repocontext;
+            this._repocontext = repocontext;
+            this._security = security;
         }
         #region LoginAndRegister
         [AllowAnonymous]
@@ -30,21 +34,41 @@ namespace PracticeCoreMVC.Controllers
         [HttpPost]
         public async Task<IActionResult> Login(LoginModel loginModel)
         {
-            var userExists = await _repocontext.Register.Select(x => x).Where(x => (x.UserName == loginModel.UserName || x.Email == loginModel.UserName) && x.Password == loginModel.Password).AnyAsync();
-            if(userExists)
-            {
-                var userDetails = await _repocontext.Register.Select(x => x).Where(x => (x.UserName == loginModel.UserName || x.Email == loginModel.UserName) && x.Password == loginModel.Password).FirstOrDefaultAsync();
-                var Roledetail = await _repocontext.UserRoleMapping.Select(x => x).Where(x => x.UserId == userDetails.Id).FirstOrDefaultAsync();
-                var role = await _repocontext.Roles.Select(x => x).Where(x => x.Id == Roledetail.RoleId).FirstOrDefaultAsync();
-                var Identity = new ClaimsIdentity(new List<Claim>
+            string incomingPassword = loginModel.Password;
+
+
+            var userExists = false;
+
+            var sNp = (
+                from s in _repocontext.UserRoleMapping 
+                join t in _repocontext.Register on s.UserId equals t.Id 
+                where t.UserName == loginModel.UserName || t.Email == loginModel.UserName 
+                select new 
                 {
-                    new Claim(ClaimTypes.Name, loginModel.UserName),
-                    new Claim("FullName", loginModel.UserName),
-                    new Claim(ClaimTypes.Role, role.Role)
-                },CookieAuthenticationDefaults.AuthenticationScheme);
-                var Principal = new ClaimsPrincipal(Identity);
-                await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, Principal);
-                return RedirectToAction("Index","Home");
+                    s.salt,
+                    t.Password
+                }
+            ).FirstOrDefault();
+            if(sNp != null) 
+            {
+                userExists = _security.VerifyPasswordWithSaltAndPepper(incomingPassword, sNp.Password, sNp.salt);
+
+                if(userExists)
+                {
+                    loginModel.Password = sNp.Password;
+                    var userDetails = await _repocontext.Register.Select(x => x).Where(x => (x.UserName == loginModel.UserName || x.Email == loginModel.UserName) && x.Password == loginModel.Password).FirstOrDefaultAsync();
+                    var Roledetail = await _repocontext.UserRoleMapping.Select(x => x).Where(x => x.UserId == userDetails.Id).FirstOrDefaultAsync();
+                    var role = await _repocontext.Roles.Select(x => x).Where(x => x.Id == Roledetail.RoleId).FirstOrDefaultAsync();
+                    var Identity = new ClaimsIdentity(new List<Claim>
+                    {
+                        new Claim(ClaimTypes.Name, loginModel.UserName),
+                        new Claim("FullName", loginModel.UserName),
+                        new Claim(ClaimTypes.Role, role.Role)
+                    },CookieAuthenticationDefaults.AuthenticationScheme);
+                    var Principal = new ClaimsPrincipal(Identity);
+                    await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, Principal);
+                    return RedirectToAction("Index","Home");
+                }
             }
             TempData["LoginError"] = "UserName or Password is Incorrect";
             return View();
@@ -61,6 +85,7 @@ namespace PracticeCoreMVC.Controllers
         }
         [AllowAnonymous]
         [HttpPost]
+        [Obsolete]
         public async Task<IActionResult> Register(RegisterModel registerModel)
         {
             var userExists = await _repocontext.Register.Select(x => x).Where(x => x.UserName == registerModel.UserName || x.Email == registerModel.Email).AnyAsync();
@@ -69,6 +94,12 @@ namespace PracticeCoreMVC.Controllers
                 TempData["UserAlreadyExistsError"] = "User Already Exists";
                 return View();
             }
+            // Password Security
+            string incomingPassword = registerModel.Password;
+            string salt = Encoding.UTF8.GetString(PasswordSecurity.GenerateSalt());
+            incomingPassword = _security.HashPasswordWithSaltAndPepper(incomingPassword, salt);
+            registerModel.Password = incomingPassword;
+
             await _repocontext.AddAsync(registerModel);
             await _repocontext.SaveChangesAsync();
             var user = await _repocontext.Register.Select(x => x).Where(x => x.UserName == registerModel.UserName && x.Email == registerModel.Email).FirstOrDefaultAsync();
@@ -77,7 +108,8 @@ namespace PracticeCoreMVC.Controllers
             {
                 Id = new Guid(),
                 UserId = user.Id,
-                RoleId = role.Id
+                RoleId = role.Id,
+                salt = salt
             });
             await _repocontext.SaveChangesAsync();
             return RedirectToAction("Login","Account");
